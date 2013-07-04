@@ -1,0 +1,12 @@
+{application, string_interpolation,
+ [
+  {description, ""},
+  {vsn, "1"},
+  {registered, []},
+  {applications, [
+                  kernel,
+                  stdlib
+                 ]},
+  {mod, { string_interpolation_app, []}},
+  {env, []}
+ ]}.
