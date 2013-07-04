@@ -11,7 +11,7 @@ The result of such trunsformation is ```iolist()```.
 
 '$'("text #{Var1, Var2} rest text #{Var3}").
 %% is same as
-["text ", [Var1, Var2], " rest text", [Var3]].
+["text ", [Var1, Var2], " rest text ", [Var3]].
 ```
 Also it can include not only variables, but any other valid erlang expression.
 
