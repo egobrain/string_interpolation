@@ -20,7 +20,6 @@ Also it can include not only variables, but any other valid erlang expression.
 '$'("text #{f(Var1, '$'(\"Var2=#{Var2}\")} rest text").
 %% is same as
 ["text ", [f(Var1, ["Var2=",[Var2]])], " rest text"].
-
 ```
 
 Usage example:

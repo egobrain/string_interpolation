@@ -13,7 +13,7 @@ parse_transform(Ast, _Options)->
 	try
 		%% ?DBG("~n~p~n=======~n", [Ast]),
 		%% ?DBG("~n~s~n=======~n", [pretty_print(Ast)]),
-		{Ast2, Errors} = lists:mapfoldl(fun transform_functions/2, [], Ast),
+		{Ast2, Errors} = lists:mapfoldl(fun transform_node/2, [], Ast),
 		ErrorsAst = [global_error_ast(L, R) || {L, R} <- Errors],
 		Ast3 = ErrorsAst ++ Ast2,
 		%% ?DBG("~n~p~n<<<<~n", [Ast3]),
@@ -24,11 +24,6 @@ parse_transform(Ast, _Options)->
 			[global_error_ast(1, Reason) | Ast]
 	end.
 
-transform_functions({function,Line,Name,G,Clauses}, Errors) ->
-	{Clauses2, Errors2} = transform_node(Clauses, Errors),
-	{{function,Line,Name,G,Clauses2}, Errors2};
-transform_functions(Node, Errors) -> {Node, Errors}.
-
 %% Node transform.
 
 transform_node({call, _, {atom, _, '$'}, [{string, Line, String}=StringNode]}, Errors) ->
@@ -38,18 +33,12 @@ transform_node({call, _, {atom, _, '$'}, [{string, Line, String}=StringNode]}, E
 		{error, Reason} ->
 			{StringNode, [{Line, Reason} | Errors]}
 	end;
-transform_node({clauses, Clauses}, Errors) ->
-	{Ast, Errors2} = transform_node(Clauses, Errors),
-	Ast2 = {clauses, Ast},
-	{Ast2, Errors2};
 transform_node(Tuple, Errors) when is_tuple(Tuple) ->
-	[Tag, Line | Rest] = tuple_to_list(Tuple),
-	{NewRest, Errors2} = lists:mapfoldl(fun(N, E) -> transform_node(N, E) end,
-										Errors, Rest),
-	{list_to_tuple([Tag, Line | NewRest]), Errors2};
+	List = tuple_to_list(Tuple),
+	{List2, Errors2} = lists:mapfoldl(fun transform_node/2, Errors, List),
+	{list_to_tuple(List2), Errors2};
 transform_node(List, Errors) when is_list(List) ->
-	lists:mapfoldl(fun(N, E) -> transform_node(N, E) end,
-				   Errors, List);
+	lists:mapfoldl(fun transform_node/2, Errors, List);
 transform_node(Node, Errors) ->
 	{Node, Errors}.
 
@@ -126,16 +115,22 @@ si(Str) ->
 parse_string([]) ->
 	{ok, ?list([])};
 parse_string(Str) ->
-	Str2 = "f() ->"++Str++".",
+	Str2 = Str ++ ".",
 	{ok, Scan, _} = erl_scan:string(Str2),
-	case erl_parse:parse(Scan) of
-		{ok, {function,_,_,_,[{clause,_,_,_,Forms}]}} ->
-			{ok, ?list(Forms)};
-		{error, {_, erl_parse, [_, "'.'"]}} ->
-			{error, "interpolation syntax error"};
-		{error, {_, erl_parse, Reason}} ->
-			{error, lists:flatten(Reason)}
+	try
+		case erl_parse:parse_exprs(Scan) of
+			{ok, Forms} ->
+				{ok, ?list(Forms)};
+			{error, {_, erl_parse, [_, "'.'"]}} ->
+				{error, "interpolation syntax error"};
+			{error, {_, erl_parse, Reason}} ->
+				{error, lists:flatten(Reason)}
+		end
+	catch _:_ ->
+		{error, "interpolation syntax error"}
 	end.
+
+%% Internal helpers.
 
 pretty_print(Forms0) ->
 	Forms = epp:restore_typed_record_fields([erl_syntax:revert(T) || T <- lists:flatten(Forms0)]),
@@ -145,3 +140,4 @@ pretty_print(Forms0) ->
 
 global_error_ast(Line, Reason) ->
 	{error, {Line, erl_parse, Reason}}.
+
