@@ -1,12 +1,8 @@
 {application, string_interpolation,
  [
-  {description, ""},
+  {description, "String interpolation transform for Erlang"},
   {vsn, "1"},
+  {modules, []},
   {registered, []},
-  {applications, [
-                  kernel,
-                  stdlib
-                 ]},
-  {mod, { string_interpolation_app, []}},
-  {env, []}
+  {applications, []}
  ]}.
